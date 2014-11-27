@@ -1,0 +1,2 @@
+# Ignoring web cause the buildscript will create this folder structure.
+web
