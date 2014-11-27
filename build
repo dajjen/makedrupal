@@ -3,7 +3,7 @@
 # build the system.
 
 # Configuration.
-PROFILE_NAME="webblanseringar"
+PROFILE_NAME="projectname"
 PROFILE_ROOT="web/profiles/${PROFILE_NAME}"
 REPOSITORY_ROOT_DIR=$(pwd)
 
