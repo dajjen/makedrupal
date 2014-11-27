@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Run drush dumpling import
+
+if pushd web; then
+  echo "Importing content"
+  drush dumpling-import-content
+  popd
+fi
+

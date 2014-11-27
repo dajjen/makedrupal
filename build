@@ -1,0 +1,143 @@
+#!/bin/bash
+# This is a simple version of the fabric file provided that can be used to
+# build the system.
+
+# Configuration.
+PROFILE_NAME="webblanseringar"
+PROFILE_ROOT="web/profiles/${PROFILE_NAME}"
+REPOSITORY_ROOT_DIR=$(pwd)
+
+
+# If we use df flag  we create symlink instead of copying profile folder into web/profile/. 
+DEVFLAG=$1 # ./build df
+
+
+
+# Make sure our profile exists.
+if [ ! -d ${PROFILE_NAME} ]; then
+echo "Could not find ${PROFILE_NAME}! Aborting."
+  exit 1
+fi
+
+# Backup settings.php and removing web folder.
+if [ -d "web" ]; then
+  if [ -f web/sites/default/settings.php ]; then
+    # Make a backup of web/sites/default/settings.php
+    echo "Backup the settings.php to the root folder"
+    cp web/sites/default/settings.php settings.php.backup
+  fi
+  echo "chmod +w web/sites/default"
+  chmod -R +w web/sites/default
+  sudo chown -R davidpark:staff web/sites/default
+  echo "Remove web directory before drush make"
+  rm -rf web
+fi
+
+# If failing removing web, exit this build.
+if [ -d "web" ]; then
+  echo "Fail to remove web folder... exit build!"
+  exit 1
+fi
+
+# Remove contrib folder.
+# Contrib folder should be populated by drush make.
+if [ -d ${PROFILE_NAME} ]; then
+  if [ -d ${PROFILE_NAME}/modules/contrib ]; then
+    echo "Remove ${PROFILE_NAME}/modules/contrib"
+    rm -r ${PROFILE_NAME}/modules/contrib
+  fi
+  # If needed in the feuture
+  # echo "Remove ${PROFILE_NAME}/libraries"
+  # if [ -d ${PROFILE_NAME}/libraries ]; then
+  #  rm -r ${PROFILE_NAME}/libraries
+  #fi
+fi
+
+
+# Make Drupal core.
+echo "==> Make Drupal core..."
+drush make --working-copy platform.make web --translations=sv
+
+if [[ ${DEVFLAG} == "df" ]]; then
+  # Create symlink to web folder from profile
+  echo "making symlink for profile"
+  ln -s ../../${PROFILE_NAME} web/profiles/${PROFILE_NAME}
+else
+  # Copy the profile to web folder
+  echo "copy the profile in place"
+  cp -r ${PROFILE_NAME} web/profiles/${PROFILE_NAME}
+fi
+
+# Make profile.
+echo "==> Make profile..."
+cd ${PROFILE_ROOT}
+drush -y make --no-core --working-copy ${PROFILE_NAME}.make --contrib-destination=. --translations=sv
+
+# Get back to root directory.
+cd ${REPOSITORY_ROOT_DIR}
+
+# move the backup settings.php.backup file in place of default site.
+if [ -f settings.php.backup ]; then
+    if [ -f web/sites/default/settings.php ]; then
+        echo "Put back backed up settings.php file"
+        
+        echo "chmod +w web/sites/default"
+        chmod +w web/sites/default
+        
+        echo "chmod +w web/sites/default/settings.php"
+        chmod +w web/sites/default/settings.php
+        
+        echo "rm web/sites/default/settings.php"
+        rm web/sites/default/settings.php
+    fi
+        echo "mv settings.php.backup  web/sites/default/settings.php"
+        mv settings.php.backup  web/sites/default/settings.php
+        
+        echo "chmod -w web/sites/default/settings.php"
+        chmod -w web/sites/default/settings.php
+        
+        echo "chmod -w web/sites/default"
+        chmod -w web/sites/default
+fi
+
+# Keep "sites" folder, but "sites/all" should be populated by our make file.
+#if [ -d web-old/sites ]; then
+#  rm -rf web-old/sites/all
+#  mv web/sites/all web-old/sites/.
+#  rm -rf web/sites
+#  mv web-old/sites web/sites
+#fi
+
+# Remove temporary folder.
+# echo "==> Remove temporary copy of old web folder..."
+# rm -rf web-old
+
+echo "==> Build done!"
+
+
+# Initilies install scripts
+# Loop through and run scripts sent in as arguments.
+if [[ ${DEVFLAG} == "df" ]]; then
+  for i in $*
+    do
+      if [[ $i == "install" ]]; then
+        if [ -f build-assets/$i ]; then
+          echo "==> Run script: ${i}... with development flag"
+          ./build-assets/$i "development"
+        fi
+      else
+        if [ -f build-assets/$i ]; then
+          echo "==> Run script: ${i}..."
+          ./build-assets/$i
+        fi
+      fi
+    done
+else
+  for i in $*
+    do
+      if [ -f build-assets/$i ]; then
+        echo "==> Run script: ${i}..."
+        ./build-assets/$i
+      fi
+  done
+fi

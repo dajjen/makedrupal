@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Run drush site install with profile
+PROFILE_NAME="webblanseringar"
+SITE_MAIL="perdavidpark+webblanseringar_admin@gmail.com"
+SITE_NAME="Webblanseringar.se"
+ACCOUNT_NAME="admin"
+ACCOUNT_PASSWORD="admin"
+DB_SETTINGS="mysql://root:password@localhost/webblanseringar"
+
+if pushd web; then
+echo "==> Installing..."
+  
+  # Make files writeable by installation script.
+  chmod a+w sites/default
+  chmod a+w sites/default/settings.php
+  
+  # Installing the site
+  drush site-install ${PROFILE_NAME} --account-name=${ACCOUNT_NAME} --account-pass=${ACCOUNT_PASSWORD} --site-mail=${SITE_MAIL} --site-name=${SITE_NAME} --db-url=${DB_SETTINGS} -y
+
+  # This section is copying the backup of settings.php to this newly installed site.
+  # Removing settings.php if exist
+  if [ -f ../settings.php.backup ]; then
+    echo "chmod +w default folder and settings.php"
+    chmod +w sites/default
+    chmod +w sites/default/settings.php
+    echo "delete settings.php"
+    rm sites/default/settings.php
+
+    # Copying old settings.php to sites/default
+    echo "copying old settings.php to sites/default"
+    mv ../settings.php.backup sites/default/settings.php
+  fi
+
+  #reverting features.
+  # drush fra -y
+
+  # Set permissions after installation 
+  # https://drupal.org/documentation/install/settings-file
+  chmod 644 sites/default/settings.php
+  chmod 755 sites/default
+
+  # Set permissions to files according to
+  # _www = appache user.
+  # staff = local user group.
+  # https://drupal.org/node/244924
+  #chown _www:staff sites/default/files
+  chmod -R 777 sites/default/files
+
+  # Enable development module if development flag is sent into install.
+  if [ $1 == "development" ]; then
+    drush en webblanseringar_development -y
+  fi
+  popd
+fi
